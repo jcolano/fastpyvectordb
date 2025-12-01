@@ -1,0 +1,11 @@
+# Index sample documents and query
+python rag_example.py --index --query "What is machine learning?"
+
+# Interactive mode
+python rag_example.py
+
+# With metadata filter
+python rag_example.py -q "Python libraries" --filter '{"category": "data-science"}'
+
+# With LLM (requires ANTHROPIC_API_KEY)
+python rag_example.py --llm -q "Explain neural networks"

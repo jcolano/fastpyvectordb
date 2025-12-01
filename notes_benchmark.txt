@@ -1,0 +1,63 @@
+# Presets
+python benchmark.py --quick      # 10K
+python benchmark.py --medium     # 100K  
+python benchmark.py --large      # 500K
+python benchmark.py --stress     # 1M
+python benchmark.py --extreme    # 2M
+
+# Custom
+python benchmark.py --records 750000 --dimension 384
+
+# Selective runs (faster iteration)
+python benchmark.py --large --only insert bulk search
+python benchmark.py --stress --skip memory persistence
+
+# Compare runs
+python benchmark.py --compare baseline.json optimized.json
+
+# Export results
+python benchmark.py --stress -o stress_results.json
+
+Skip memory first since it creates multiple DBs at different scales — you can run it separately if needed:
+
+python benchmark.py --stress --skip memory -o stress_1m.json
+
+
+100K with improvements level 1
+==============================
+  KEY METRICS:
+    Sequential insert: 3,239 vectors/sec
+    Bulk insert: 36,354 vectors/sec
+    Search throughput: 8,498 queries/sec
+    Search latency p50: 0.110 ms
+    Search latency p99: 0.276 ms
+    Memory usage: 213.3 MB for 100,000 vectors
+
+100K with quantization improvements (level 2)
+=============================================
+
+
+
+Benchmark with parallelization (level 3)
+========================================
+======================================================================
+  BENCHMARK SUMMARY
+======================================================================
+
+Performance (ms/query):
+------------------------------------------------------------------------------------------
+Dataset         Naive      BLAS       Engine     Batch      HNSW       Hybrid
+------------------------------------------------------------------------------------------
+Small (10K)     30.92      0.65       0.38       0.26       0.048      0.233
+Medium (50K)    157.03     2.36       2.15       0.83       0.135      0.619
+Large (100K)    444.29     4.97       5.08       1.66       0.186      0.473
+------------------------------------------------------------------------------------------
+
+Speedup vs Naive:
+------------------------------------------------------------------------------------------
+Dataset         BLAS       Engine     Batch      HNSW       Hybrid
+------------------------------------------------------------------------------------------
+Small (10K)     47.7      x 82.1      x 120.4     x 640x       133x
+Medium (50K)    66.6      x 73.1      x 189.8     x 1163x      254x
+Large (100K)    89.4      x 87.5      x 267.3     x 2388x      939x
+------------------------------------------------------------------------------------------

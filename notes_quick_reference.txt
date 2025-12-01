@@ -1,0 +1,26 @@
+from vectordb import VectorDB, Filter
+
+# CREATE
+db = VectorDB("./my_db")
+collection = db.create_collection("docs", dimensions=384)
+
+# INSERT
+collection.insert(vector, id="doc1", metadata={"title": "Hello"})
+collection.insert_batch(vectors, ids, metadata_list)  # Faster
+
+# SEARCH
+results = collection.search(query_vector, k=10)
+results = collection.search(query_vector, k=10, filter={"category": "tech"})
+results = collection.search(query_vector, k=10, filter=Filter.gte("year", 2020))
+
+# READ
+doc = collection.get("doc1", include_vector=True)
+
+# UPDATE (upsert)
+collection.upsert(new_vector, id="doc1", metadata={...})
+
+# DELETE
+collection.delete("doc1")
+
+# PERSIST
+db.save()

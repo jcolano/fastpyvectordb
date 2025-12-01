@@ -1,0 +1,23 @@
+# Core dependencies
+numpy>=1.24.0
+hnswlib>=0.8.0
+
+# REST API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+
+# WebSocket support
+websockets>=12.0
+
+# Optional: HTTP client for testing
+httpx>=0.26.0
+requests>=2.31.0
+
+# Embeddings providers (uncomment as needed)
+# sentence-transformers>=2.2.0  # Local embeddings
+# openai>=1.0.0                  # OpenAI embeddings
+# cohere>=4.0.0                  # Cohere embeddings
+
+# Graph visualization (optional)
+# networkx>=3.0
