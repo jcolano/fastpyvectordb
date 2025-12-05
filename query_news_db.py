@@ -198,18 +198,21 @@ class NewsQueryInterface:
         if not result:
             return {"error": f"Article '{article_id}' not found"}
 
+        # The get() method returns {"id": ..., "metadata": {...}}
+        metadata = result.get("metadata", {})
+
         article = {
             "id": article_id,
-            "headline": result.get("headline", "N/A"),
-            "content": result.get("content", "N/A"),
-            "category": result.get("category", "N/A"),
-            "topic": result.get("topic", "N/A"),
-            "source": result.get("source", "N/A"),
-            "published_date": result.get("published_date", "N/A"),
-            "sentiment": result.get("sentiment", "N/A"),
-            "word_count": result.get("word_count", 0),
-            "entities": result.get("entities", "").split(",") if result.get("entities") else [],
-            "related_topics": result.get("related_topics", "").split(",") if result.get("related_topics") else []
+            "headline": metadata.get("headline", "N/A"),
+            "content": metadata.get("content", "N/A"),
+            "category": metadata.get("category", "N/A"),
+            "topic": metadata.get("topic", "N/A"),
+            "source": metadata.get("source", "N/A"),
+            "published_date": metadata.get("published_date", "N/A"),
+            "sentiment": metadata.get("sentiment", "N/A"),
+            "word_count": metadata.get("word_count", 0),
+            "entities": metadata.get("entities", "").split(",") if metadata.get("entities") else [],
+            "related_topics": metadata.get("related_topics", "").split(",") if metadata.get("related_topics") else []
         }
 
         # Enrich with graph data if available
