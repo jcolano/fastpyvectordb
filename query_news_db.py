@@ -35,6 +35,12 @@ try:
 except ImportError:
     HAS_GRAPH = False
 
+try:
+    from embeddings import SentenceTransformerEmbedder
+    HAS_EMBEDDINGS = True
+except ImportError:
+    HAS_EMBEDDINGS = False
+
 
 class NewsQueryInterface:
     """
@@ -43,7 +49,8 @@ class NewsQueryInterface:
     This is what an end-user would use to search and explore the news data.
     """
 
-    def __init__(self, db_path: str = "./news_intelligence_db"):
+    def __init__(self, db_path: str = "./news_intelligence_db",
+                 embedding_model: str = "all-MiniLM-L6-v2"):
         """Load the existing database."""
         print(f"Loading database from {db_path}...")
 
@@ -65,8 +72,29 @@ class NewsQueryInterface:
         else:
             print("  Graph module not available")
 
-        # Build topic embedding cache (simplified - in production use real embeddings)
-        self._build_topic_embeddings()
+        # Initialize real embedder (sentence-transformers)
+        self.embedder = None
+        self.embedding_dim = 384  # Default for all-MiniLM-L6-v2
+        self.use_real_embeddings = False
+
+        if HAS_EMBEDDINGS:
+            try:
+                print(f"  Loading embedding model: {embedding_model}")
+                self.embedder = SentenceTransformerEmbedder(embedding_model)
+                self.embedding_dim = self.embedder.dimensions
+                self.use_real_embeddings = True
+                print(f"  Embedding model loaded (dims: {self.embedding_dim})")
+            except Exception as e:
+                print(f"  Failed to load embedder: {e}")
+                print("  Falling back to synthetic embeddings")
+        else:
+            print("  Real embeddings not available. Install: pip install sentence-transformers")
+            print("  Using synthetic embeddings (results may not be accurate)")
+
+        # Build topic embedding cache (fallback for synthetic mode)
+        self.topic_embeddings = {}
+        if not self.use_real_embeddings:
+            self._build_topic_embeddings()
 
         print(f"  Articles loaded: {self.collection.count():,}")
         print("Ready for queries!\n")
@@ -90,7 +118,12 @@ class NewsQueryInterface:
             self.topic_embeddings[topic] = emb
 
     def _get_query_embedding(self, query: str) -> np.ndarray:
-        """Get or create embedding for a query."""
+        """Get embedding for a query using real embeddings or fallback to synthetic."""
+        if self.use_real_embeddings and self.embedder:
+            # Use real sentence-transformer embeddings
+            return self.embedder.embed(query)
+
+        # Fallback to synthetic embeddings
         query_lower = query.lower()
 
         # Check if we have a cached embedding
@@ -98,7 +131,6 @@ class NewsQueryInterface:
             return self.topic_embeddings[query_lower]
 
         # Create a deterministic embedding based on query
-        # In production, you'd use a real embedding model here
         seed = hash(query_lower) % (2**32)
         rng = np.random.default_rng(seed)
         emb = rng.standard_normal(self.embedding_dim).astype(np.float32)
@@ -688,6 +720,8 @@ Examples:
 
     parser.add_argument("--db-path", default="./news_intelligence_db",
                        help="Path to the database")
+    parser.add_argument("--embedding-model", default="all-MiniLM-L6-v2",
+                       help="Sentence transformer model for embeddings (default: all-MiniLM-L6-v2)")
     parser.add_argument("--search", "-s", type=str,
                        help="Search for articles")
     parser.add_argument("--read", "-r", type=str,
@@ -714,7 +748,7 @@ Examples:
 
     # Load database
     try:
-        qi = NewsQueryInterface(args.db_path)
+        qi = NewsQueryInterface(args.db_path, embedding_model=args.embedding_model)
     except Exception as e:
         print(f"Error loading database: {e}")
         print("\nMake sure you've run news_intelligence_demo.py first!")

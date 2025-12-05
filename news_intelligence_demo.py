@@ -77,6 +77,13 @@ except ImportError:
     HAS_HYBRID_SEARCH = False
     print("Warning: Hybrid search module not available")
 
+try:
+    from embeddings import SentenceTransformerEmbedder
+    HAS_EMBEDDINGS = True
+except ImportError:
+    HAS_EMBEDDINGS = False
+    print("Warning: Embeddings module not available. Install sentence-transformers: pip install sentence-transformers")
+
 
 # ================================================================================
 # CONFIGURATION
@@ -89,6 +96,10 @@ class Config:
     # Dataset size - adjust for your hardware
     num_articles: int = 100_000  # Total articles to generate
     embedding_dim: int = 384      # Embedding dimensions (matches all-MiniLM-L6-v2)
+
+    # Embedding model settings
+    embedding_model: str = "all-MiniLM-L6-v2"  # Sentence transformer model
+    use_real_embeddings: bool = True  # Use real embeddings (requires sentence-transformers)
 
     # Database settings
     db_path: str = "./news_intelligence_db"
@@ -378,9 +389,27 @@ class NewsDataGenerator:
         self.categories = list(NEWS_CATEGORIES.keys())
         self.category_weights = [NEWS_CATEGORIES[c]["weight"] for c in self.categories]
 
-        # Topic embeddings cache (simulate learned topic representations)
+        # Initialize embedder (real or synthetic)
+        self.embedder = None
+        self.use_real_embeddings = config.use_real_embeddings and HAS_EMBEDDINGS
+
+        if self.use_real_embeddings:
+            try:
+                print(f"Loading embedding model: {config.embedding_model}")
+                self.embedder = SentenceTransformerEmbedder(config.embedding_model)
+                print(f"  Model loaded. Dimensions: {self.embedder.dimensions}")
+            except Exception as e:
+                print(f"  Failed to load embedder: {e}")
+                print("  Falling back to synthetic embeddings")
+                self.use_real_embeddings = False
+
+        if not self.use_real_embeddings:
+            print("Using synthetic embeddings (for testing only)")
+
+        # Topic embeddings cache (for synthetic fallback)
         self.topic_embeddings = {}
-        self._initialize_topic_embeddings()
+        if not self.use_real_embeddings:
+            self._initialize_topic_embeddings()
 
     def _initialize_topic_embeddings(self):
         """Create base embeddings for each topic (simulates training)."""
@@ -397,22 +426,28 @@ class NewsDataGenerator:
                 topic_emb = topic_emb / np.linalg.norm(topic_emb)
                 self.topic_embeddings[topic] = topic_emb
 
-    def _generate_embedding(self, topic: str, content: str) -> np.ndarray:
-        """Generate a realistic embedding for an article."""
-        # Start with topic embedding
-        base_emb = self.topic_embeddings.get(topic,
-                   self.rng.standard_normal(self.config.embedding_dim).astype(np.float32))
+    def _generate_embedding(self, topic: str, content: str, headline: str = "") -> np.ndarray:
+        """Generate an embedding for an article using real or synthetic embeddings."""
+        if self.use_real_embeddings and self.embedder:
+            # Use real embeddings from sentence-transformers
+            # Combine headline and content for better semantic representation
+            text_to_embed = f"{headline} {content}" if headline else content
+            return self.embedder.embed(text_to_embed)
+        else:
+            # Fallback to synthetic embeddings
+            base_emb = self.topic_embeddings.get(topic,
+                       self.rng.standard_normal(self.config.embedding_dim).astype(np.float32))
 
-        # Add content-based variation (simulates actual content differences)
-        content_hash = int(hashlib.md5(content.encode()).hexdigest(), 16)
-        content_rng = np.random.default_rng(content_hash % (2**32))
-        content_noise = content_rng.standard_normal(self.config.embedding_dim).astype(np.float32) * 0.15
+            # Add content-based variation (simulates actual content differences)
+            content_hash = int(hashlib.md5(content.encode()).hexdigest(), 16)
+            content_rng = np.random.default_rng(content_hash % (2**32))
+            content_noise = content_rng.standard_normal(self.config.embedding_dim).astype(np.float32) * 0.15
 
-        # Combine and normalize
-        embedding = base_emb + content_noise
-        embedding = embedding / np.linalg.norm(embedding)
+            # Combine and normalize
+            embedding = base_emb + content_noise
+            embedding = embedding / np.linalg.norm(embedding)
 
-        return embedding
+            return embedding
 
     def _generate_random_date(self) -> datetime:
         """Generate a random date within the configured range."""
@@ -474,8 +509,8 @@ class NewsDataGenerator:
         # Generate unique ID
         article_id_str = f"article_{article_id:08d}"
 
-        # Generate embedding
-        embedding = self._generate_embedding(topic, content)
+        # Generate embedding (using headline + content for better semantic representation)
+        embedding = self._generate_embedding(topic, content, headline)
 
         return Article(
             id=article_id_str,
@@ -494,8 +529,37 @@ class NewsDataGenerator:
         )
 
     def generate_batch(self, start_id: int, count: int) -> List[Article]:
-        """Generate a batch of articles."""
-        return [self.generate_article(start_id + i) for i in range(count)]
+        """Generate a batch of articles with batch embedding support."""
+        # Generate articles without embeddings first
+        articles = []
+        for i in range(count):
+            article = self.generate_article(start_id + i)
+            articles.append(article)
+
+        # If using real embeddings, do batch embedding for efficiency
+        if self.use_real_embeddings and self.embedder:
+            texts = [f"{a.headline} {a.content}" for a in articles]
+            embeddings = self.embedder.embed_batch(texts)
+            for article, embedding in zip(articles, embeddings):
+                article.embedding = embedding
+
+        return articles
+
+    def get_query_embedding(self, query: str) -> np.ndarray:
+        """Get embedding for a search query."""
+        if self.use_real_embeddings and self.embedder:
+            return self.embedder.embed(query)
+        else:
+            # Fall back to topic embedding or generate from hash
+            query_lower = query.lower()
+            if query_lower in self.topic_embeddings:
+                return self.topic_embeddings[query_lower]
+            # Generate deterministic embedding from hash
+            seed = hash(query_lower) % (2**32)
+            rng = np.random.default_rng(seed)
+            emb = rng.standard_normal(self.config.embedding_dim).astype(np.float32)
+            emb = emb / np.linalg.norm(emb)
+            return emb
 
     def generate_all(self, show_progress: bool = True) -> List[Article]:
         """Generate all articles."""
@@ -969,11 +1033,8 @@ class NewsIntelligenceDemo:
         ]
 
         for topic in sample_topics:
-            # Get topic embedding
-            query_embedding = self.generator.topic_embeddings.get(
-                topic,
-                self.generator.rng.standard_normal(self.config.embedding_dim).astype(np.float32)
-            )
+            # Get query embedding using the embedder
+            query_embedding = self.generator.get_query_embedding(topic)
 
             results = self.db.semantic_search(topic, query_embedding, k=5)
 
@@ -985,10 +1046,7 @@ class NewsIntelligenceDemo:
 
         # Filtered search
         print("\n--- 2. Filtered Search (Category + Time Range) ---")
-        query_embedding = self.generator.topic_embeddings.get(
-            "artificial intelligence",
-            self.generator.rng.standard_normal(self.config.embedding_dim).astype(np.float32)
-        )
+        query_embedding = self.generator.get_query_embedding("artificial intelligence")
 
         results = self.db.semantic_search(
             "AI technology",
@@ -1358,7 +1416,7 @@ class NewsIntelligenceDemo:
 
         # Simulate breaking news about AI
         breaking_topic = "artificial intelligence"
-        query_embedding = self.generator.topic_embeddings.get(breaking_topic)
+        query_embedding = self.generator.get_query_embedding(breaking_topic)
 
         print(f"\n  Breaking news topic: '{breaking_topic}'")
         print("  Finding related coverage across all sources...")
@@ -1412,7 +1470,7 @@ class NewsIntelligenceDemo:
         print("  Use case: Find comprehensive coverage on a research topic")
 
         research_topic = "climate change"
-        query_embedding = self.generator.topic_embeddings.get(research_topic)
+        query_embedding = self.generator.get_query_embedding(research_topic)
 
         print(f"\n  Research topic: '{research_topic}'")
 
@@ -1440,10 +1498,7 @@ class NewsIntelligenceDemo:
         print("  Use case: Analyze topic trends over time")
 
         trend_topic = "cryptocurrency"
-        query_embedding = self.generator.topic_embeddings.get(
-            trend_topic,
-            self.generator.rng.standard_normal(self.config.embedding_dim).astype(np.float32)
-        )
+        query_embedding = self.generator.get_query_embedding(trend_topic)
 
         print(f"\n  Analyzing trends for: '{trend_topic}'")
 
@@ -1550,10 +1605,7 @@ class NewsIntelligenceDemo:
 
             # First, find semantically similar articles
             query_topic = "machine learning"
-            query_embedding = self.generator.topic_embeddings.get(
-                query_topic,
-                self.generator.rng.standard_normal(self.config.embedding_dim).astype(np.float32)
-            )
+            query_embedding = self.generator.get_query_embedding(query_topic)
 
             print(f"\n  Step 1: Vector search for '{query_topic}'")
             results = self.db.semantic_search(query_topic, query_embedding, k=5)
@@ -1689,6 +1741,19 @@ Examples:
         help="Only run benchmarks on existing database"
     )
 
+    parser.add_argument(
+        "--embedding-model",
+        type=str,
+        default="all-MiniLM-L6-v2",
+        help="Sentence transformer model for embeddings (default: all-MiniLM-L6-v2)"
+    )
+
+    parser.add_argument(
+        "--synthetic",
+        action="store_true",
+        help="Use synthetic embeddings instead of real ones (faster but less accurate)"
+    )
+
     args = parser.parse_args()
 
     # Create configuration
@@ -1698,7 +1763,9 @@ Examples:
         db_path=args.db_path,
         batch_size=args.batch_size,
         num_workers=args.workers,
-        demo_queries=50 if args.quick else 100
+        demo_queries=50 if args.quick else 100,
+        embedding_model=args.embedding_model,
+        use_real_embeddings=not args.synthetic
     )
 
     # Run demo
