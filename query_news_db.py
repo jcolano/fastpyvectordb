@@ -55,9 +55,15 @@ class NewsQueryInterface:
         self.graph = None
         if HAS_GRAPH:
             graph_path = os.path.join(db_path, "graph")
-            if os.path.exists(graph_path):
+            graph_file = os.path.join(graph_path, "graph.json")
+            if os.path.exists(graph_file):
                 self.graph = GraphDB(graph_path)
                 print(f"  Graph loaded: {self.graph.node_count():,} nodes, {self.graph.edge_count():,} edges")
+            else:
+                print(f"  Graph not found at {graph_path}")
+                print("  (Run news_intelligence_demo.py first to build the graph)")
+        else:
+            print("  Graph module not available")
 
         # Build topic embedding cache (simplified - in production use real embeddings)
         self._build_topic_embeddings()
