@@ -1,16 +1,246 @@
 # PyVectorDB
 
-A high-performance Python vector database with HNSW indexing, quantization, parallel processing, knowledge graph, and real-time subscriptions.
+A high-performance Python vector database with a simple, ChromaDB-like API. Features HNSW indexing, multiple embedding providers, quantization, knowledge graphs, and more.
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+## Installation
+
+```bash
+# Install with pip (from source)
+pip install -e .
+
+# With local embeddings (recommended - no API key needed)
+pip install -e ".[local]"
+
+# With OpenAI embeddings
+pip install -e ".[openai]"
+
+# With all optional dependencies
+pip install -e ".[all]"
+```
+
+**Quick install core dependencies only:**
+```bash
+pip install numpy hnswlib sentence-transformers
+```
+
+## Quick Start
+
+PyVectorDB provides a simple, intuitive API similar to ChromaDB:
+
+```python
+import pyvectordb
+
+# Create a client
+client = pyvectordb.Client()
+
+# Create a collection (uses local embeddings by default)
+collection = client.create_collection("my_documents")
+
+# Add documents - embeddings are generated automatically
+collection.add(
+    documents=[
+        "Machine learning is a subset of artificial intelligence",
+        "Deep learning uses neural networks with many layers",
+        "Natural language processing helps computers understand text"
+    ],
+    ids=["ml", "dl", "nlp"],
+    metadatas=[
+        {"category": "AI", "level": "beginner"},
+        {"category": "AI", "level": "advanced"},
+        {"category": "NLP", "level": "intermediate"}
+    ]
+)
+
+# Search with natural language
+results = collection.query(
+    query_texts="What is AI?",
+    n_results=3
+)
+
+# Print results
+for doc, score in zip(results.documents[0], results.distances[0]):
+    print(f"Score: {score:.4f} - {doc}")
+```
+
+## Core API
+
+### Client Operations
+
+```python
+import pyvectordb
+
+# Create client (data stored in ./vectordb by default)
+client = pyvectordb.Client(path="./my_data")
+
+# Create a new collection
+collection = client.create_collection("documents")
+
+# Get existing collection
+collection = client.get_collection("documents")
+
+# Get or create (safe for repeated calls)
+collection = client.get_or_create_collection("documents")
+
+# List all collections
+print(client.list_collections())
+
+# Delete a collection
+client.delete_collection("documents")
+
+# Save all data to disk
+client.persist()
+```
+
+### Collection Operations
+
+```python
+# Add documents
+collection.add(
+    documents=["Hello world", "Goodbye world"],
+    ids=["doc1", "doc2"],
+    metadatas=[{"source": "greeting"}, {"source": "farewell"}]
+)
+
+# Add with pre-computed embeddings
+collection.add(
+    embeddings=[[0.1, 0.2, ...], [0.3, 0.4, ...]],
+    ids=["doc1", "doc2"]
+)
+
+# Upsert (add or update)
+collection.upsert(
+    documents=["Updated document"],
+    ids=["doc1"]
+)
+
+# Query/Search
+results = collection.query(
+    query_texts="search query",    # or query_embeddings=[...]
+    n_results=10,
+    where={"category": "tech"}     # optional filter
+)
+
+# Access results
+print(results.ids)        # [["id1", "id2", ...]]
+print(results.documents)  # [["doc1", "doc2", ...]]
+print(results.distances)  # [[0.1, 0.2, ...]]
+print(results.metadatas)  # [[{...}, {...}, ...]]
+
+# Get by ID
+result = collection.get(ids=["doc1", "doc2"])
+result = collection.get(where={"category": "tech"}, limit=10)
+
+# Update existing documents
+collection.update(
+    ids=["doc1"],
+    documents=["New content"],
+    metadatas=[{"version": 2}]
+)
+
+# Delete documents
+collection.delete(ids=["doc1", "doc2"])
+collection.delete(where={"category": "old"})
+
+# Get count
+print(f"Documents: {collection.count}")
+
+# Peek at sample
+sample = collection.peek(limit=5)
+```
+
+### Using Different Embedding Models
+
+```python
+# Local embeddings (default) - no API key needed
+collection = client.create_collection(
+    name="docs",
+    embedding_model="all-MiniLM-L6-v2"  # Fast, 384 dimensions
+)
+
+# Higher quality local model
+collection = client.create_collection(
+    name="docs",
+    embedding_model="all-mpnet-base-v2"  # Better quality, 768 dimensions
+)
+
+# OpenAI embeddings (requires OPENAI_API_KEY)
+collection = client.create_collection(
+    name="docs",
+    embedding_model="text-embedding-3-small",
+    embedding_provider="openai"
+)
+
+# Cohere embeddings (requires COHERE_API_KEY)
+collection = client.create_collection(
+    name="docs",
+    embedding_model="embed-english-v3.0",
+    embedding_provider="cohere"
+)
+```
+
+### Filtering
+
+```python
+# Simple equality filter
+results = collection.query(
+    query_texts="search",
+    where={"category": "tech"}
+)
+
+# Multiple conditions (AND)
+results = collection.query(
+    query_texts="search",
+    where={"category": "tech", "year": 2024}
+)
+
+# Using Filter class for complex queries
+from pyvectordb import Filter
+
+results = collection.query(
+    query_texts="search",
+    filter=Filter.and_([
+        Filter.eq("category", "tech"),
+        Filter.gte("score", 0.8),
+        Filter.in_("status", ["published", "draft"])
+    ])
+)
+```
+
+## Examples
+
+See the `examples/` directory for complete examples:
+
+```bash
+# Run quickstart examples
+python examples/quickstart.py
+
+# RAG application demo
+python examples/rag_demo.py
+
+# News intelligence demo
+python examples/news_intelligence_demo.py
+```
+
+---
+
+## Advanced Usage
+
+For advanced features like quantization, parallel search, and knowledge graphs, see below.
 
 ## Features
 
+- **Simple API** — ChromaDB-like interface for easy adoption
+- **Multiple Embeddings** — Local (Sentence Transformers), OpenAI, Cohere
 - **HNSW Indexing** — Sub-millisecond approximate nearest neighbor search
+- **Metadata Filtering** — Filter by any metadata field
 - **Quantization** — 4-32x memory compression with scalar, binary, and product quantizers
 - **Parallel Search** — Multi-core BLAS/GEMM acceleration (67x speedup)
 - **Knowledge Graph** — Nodes, edges, traversal, and Cypher-like queries
 - **Hybrid Search** — Combined vector similarity + graph relationships
 - **REST API** — FastAPI server with WebSocket real-time updates
-- **Multiple Embeddings** — OpenAI, Sentence Transformers, Cohere, or custom
 - **Persistence** — Save/load to disk with automatic recovery
 
 ## Architecture
@@ -21,53 +251,40 @@ A high-performance Python vector database with HNSW indexing, quantization, para
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────────┐    ┌──────────────────┐                  │
-│  │  vectordb_       │    │   quantization   │                  │
-│  │  optimized.py    │    │      .py         │                  │
+│  │  pyvectordb/     │    │   quantization   │                  │
+│  │  client.py       │    │      .py         │                  │
 │  │  ──────────────  │    │  ──────────────  │                  │
-│  │  • VectorDB      │    │  • Scalar (4x)   │                  │
+│  │  • Client        │    │  • Scalar (4x)   │                  │
 │  │  • Collection    │    │  • Binary (32x)  │                  │
-│  │  • HNSW Index    │    │  • Product (8x)  │                  │
-│  │  • Filters       │    │                  │                  │
+│  │  • Simple API    │    │  • Product (8x)  │                  │
+│  │  • Auto-embed    │    │                  │                  │
 │  └────────┬─────────┘    └────────┬─────────┘                  │
 │           │                       │                             │
 │           ▼                       ▼                             │
 │  ┌──────────────────────────────────────────┐                  │
-│  │           parallel_search.py              │                  │
+│  │       vectordb_optimized.py              │                  │
 │  │  ────────────────────────────────────────│                  │
-│  │  • ParallelSearchEngine (BLAS/GEMM)      │                  │
-│  │  • MemoryMappedVectors (>RAM datasets)   │                  │
-│  │  • ConcurrentHNSWSearcher                │                  │
+│  │  • VectorDB / Collection (Core)          │                  │
+│  │  • HNSW Index                            │                  │
+│  │  • Filter Engine                         │                  │
 │  └────────────────────┬─────────────────────┘                  │
 │                       │                                         │
 │           ┌───────────┴───────────┐                            │
 │           ▼                       ▼                             │
 │  ┌──────────────────┐    ┌──────────────────┐                  │
-│  │    graph.py      │    │  hybrid_search   │                  │
+│  │    graph.py      │    │  parallel_search │                  │
 │  │  ──────────────  │    │      .py         │                  │
 │  │  • GraphDB       │    │  ──────────────  │                  │
-│  │  • Nodes/Edges   │    │  Vector + Graph  │                  │
-│  │  • Traversal     │    │  Combined Search │                  │
+│  │  • Nodes/Edges   │    │  • Multi-core    │                  │
+│  │  • Traversal     │    │  • Memory-mapped │                  │
 │  └──────────────────┘    └──────────────────┘                  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Installation
+## Low-Level API
 
-```bash
-# Core dependencies
-pip install numpy hnswlib
-
-# REST API (optional)
-pip install fastapi uvicorn pydantic
-
-# Embeddings (optional - choose one or more)
-pip install sentence-transformers  # Local embeddings
-pip install openai                 # OpenAI embeddings
-pip install cohere                 # Cohere embeddings
-```
-
-## Quick Start
+For more control, you can use the low-level API directly:
 
 ### Basic Vector Database
 
@@ -252,7 +469,8 @@ results = client.search("docs", vector=[0.1, 0.2, ...], k=10)
 
 | Module | Description |
 |--------|-------------|
-| `vectordb_optimized.py` | Main vector database with HNSW indexing |
+| `pyvectordb/` | High-level client API (recommended) |
+| `vectordb_optimized.py` | Core vector database with HNSW indexing |
 | `quantization.py` | Scalar, binary, and product quantization |
 | `parallel_search.py` | Multi-core search engine and memory-mapped vectors |
 | `graph.py` | Knowledge graph with nodes, edges, and traversal |
@@ -265,7 +483,7 @@ results = client.search("docs", vector=[0.1, 0.2, ...], k=10)
 ### Filter Operations
 
 ```python
-from vectordb_optimized import Filter
+from pyvectordb import Filter
 
 Filter.eq("field", value)       # Equal
 Filter.ne("field", value)       # Not equal
@@ -274,8 +492,11 @@ Filter.gte("field", value)      # Greater than or equal
 Filter.lt("field", value)       # Less than
 Filter.lte("field", value)      # Less than or equal
 Filter.in_("field", [values])   # In list
+Filter.contains("field", "sub") # Contains substring
+Filter.regex("field", "^pat.*") # Regex match
 Filter.and_([f1, f2])           # AND
 Filter.or_([f1, f2])            # OR
+Filter.not_(f1)                 # NOT
 ```
 
 ### Quantization Comparison
@@ -312,22 +533,19 @@ Speedup vs Naive (100K vectors):
 
 ```bash
 # Quick benchmark (10K vectors)
-python benchmark.py --quick
+python examples/benchmark.py --quick
 
 # Standard benchmark (100K vectors)
-python benchmark.py --medium
+python examples/benchmark.py --medium
 
 # Stress test (1M vectors)
-python benchmark.py --stress
+python examples/benchmark.py --stress
 
 # Parallel search benchmark
-python benchmark_parallel.py
+python examples/benchmark_parallel.py
 
 # Quantization benchmark
-python benchmark_quantization.py
-
-# Compare implementations
-python benchmark_comparison.py
+python examples/benchmark_quantization.py
 ```
 
 ## Performance Tuning
@@ -359,80 +577,32 @@ collection.set_ef_search(100)
 | 1M - 10M | Memory-mapped + HNSW |
 | > 10M | Memory-mapped + Binary quantization + HNSW candidates |
 
-## Integration Patterns
-
-### HNSW + Quantization (Memory Efficient)
-
-```python
-from vectordb_optimized import VectorDB
-from quantization import ScalarQuantizer
-
-db = VectorDB("./db")
-collection = db.create_collection("docs", dimensions=384)
-collection.insert_batch(vectors, ids)
-
-# Also keep quantized copy for memory efficiency
-sq = ScalarQuantizer(384)
-sq.train(vectors)
-quantized = sq.encode(vectors)
-
-# Use HNSW for candidate generation, quantized for re-ranking
-candidates = collection.search(query, k=100)
-```
-
-### HNSW + Graph (Hybrid Search)
-
-```python
-from vectordb_optimized import VectorDB
-from graph import GraphDB, NodeBuilder, EdgeBuilder
-
-db = VectorDB("./db")
-collection = db.create_collection("docs", dimensions=384)
-graph = GraphDB()
-
-# Index document in both
-collection.insert(vector, id="doc1", metadata={"author": "alice"})
-graph.create_node(NodeBuilder("doc1").label("Document").build())
-graph.create_edge(EdgeBuilder("doc1", "user_alice", "AUTHORED").build())
-
-# Hybrid search: vector similarity + graph expansion
-vector_results = collection.search(query, k=10)
-for r in vector_results:
-    related = graph.neighbors(r.id, direction="both")
-```
-
-## Demo
-
-```bash
-# Interactive demo showcasing all features
-python demo.py
-
-# RAG application demo
-python rag_demo.py
-
-# API reference
-python rag_demo.py --api
-
-# RAG example with LLM
-python rag_example.py --llm -q "Explain neural networks"
-```
-
 ## Requirements
 
+Core:
 ```
 numpy>=1.24.0
 hnswlib>=0.8.0
-fastapi>=0.109.0      # REST API
-uvicorn>=0.27.0       # ASGI server
-pydantic>=2.0.0       # Data validation
-websockets>=12.0      # Real-time updates
-httpx>=0.26.0         # HTTP client
+```
+
+Optional:
+```
+sentence-transformers>=2.2.0  # Local embeddings
+openai>=1.0.0                  # OpenAI embeddings
+fastapi>=0.109.0               # REST API
+uvicorn>=0.27.0                # ASGI server
 ```
 
 ## License
 
-MIT License
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request

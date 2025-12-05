@@ -1,0 +1,143 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyvectordb"
+version = "0.1.0"
+description = "A high-performance Python vector database for semantic search and RAG applications"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "PyVectorDB Contributors"}
+]
+keywords = [
+    "vector-database",
+    "embeddings",
+    "semantic-search",
+    "similarity-search",
+    "HNSW",
+    "RAG",
+    "retrieval",
+    "machine-learning",
+    "AI",
+    "NLP"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Topic :: Text Processing :: Indexing",
+]
+
+dependencies = [
+    "numpy>=1.24.0",
+    "hnswlib>=0.8.0",
+]
+
+[project.optional-dependencies]
+# Local embeddings (no API key needed)
+local = [
+    "sentence-transformers>=2.2.0",
+]
+
+# OpenAI embeddings
+openai = [
+    "openai>=1.0.0",
+]
+
+# Cohere embeddings
+cohere = [
+    "cohere>=4.0.0",
+]
+
+# REST API server
+server = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.0.0",
+    "websockets>=12.0",
+]
+
+# HTTP client
+client = [
+    "httpx>=0.26.0",
+    "requests>=2.31.0",
+]
+
+# Graph visualization
+graph = [
+    "networkx>=3.0",
+]
+
+# All optional dependencies
+all = [
+    "sentence-transformers>=2.2.0",
+    "openai>=1.0.0",
+    "cohere>=4.0.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.0.0",
+    "websockets>=12.0",
+    "httpx>=0.26.0",
+    "requests>=2.31.0",
+    "networkx>=3.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jcolano/custom-python-vectordb"
+Documentation = "https://github.com/jcolano/custom-python-vectordb#readme"
+Repository = "https://github.com/jcolano/custom-python-vectordb"
+Issues = "https://github.com/jcolano/custom-python-vectordb/issues"
+
+[project.scripts]
+pyvectordb-server = "server:main"
+
+[tool.setuptools]
+packages = ["pyvectordb"]
+package-dir = {"" = "."}
+include-package-data = true
+
+[tool.setuptools.package-data]
+pyvectordb = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "C4"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
