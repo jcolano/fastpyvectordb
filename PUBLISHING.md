@@ -1,9 +1,9 @@
-# Publishing FastPyDB to PyPI
+# Publishing FastPyVectorDB to PyPI
 
-This guide walks you through publishing FastPyDB to PyPI so users can install it with:
+This guide walks you through publishing FastPyVectorDB to PyPI so users can install it with:
 
 ```bash
-pip install fastpydb
+pip install fastpyvectordb
 ```
 
 ## Prerequisites
@@ -22,7 +22,7 @@ For secure uploads, create API tokens instead of using passwords:
 **For PyPI:**
 1. Go to https://pypi.org/manage/account/token/
 2. Click "Add API token"
-3. Name it (e.g., "fastpydb-upload")
+3. Name it (e.g., "fastpyvectordb-upload")
 4. Scope: "Entire account" (for first upload) or specific project later
 5. Copy and save the token (starts with `pypi-`)
 
@@ -42,13 +42,13 @@ pip install build twine
 
 ### Step 1: Verify Package Name Availability
 
-Check if "fastpydb" is available on PyPI:
+Check if "fastpyvectordb" is available on PyPI:
 
 ```bash
 # Check PyPI
-pip index versions fastpydb
+pip index versions fastpyvectordb
 
-# Or visit: https://pypi.org/project/fastpydb/
+# Or visit: https://pypi.org/project/fastpyvectordb/
 ```
 
 If the name is taken, you'll need to choose a different name and update `pyproject.toml`:
@@ -67,7 +67,7 @@ Before each release, update the version in two places:
 version = "0.1.0"  # Update this
 ```
 
-**fastpydb/__init__.py:**
+**fastpyvectordb/__init__.py:**
 ```python
 __version__ = "0.1.0"  # Update this
 ```
@@ -92,8 +92,8 @@ python -m build
 ```
 
 This creates two files in `dist/`:
-- `fastpydb-0.1.0.tar.gz` (source distribution)
-- `fastpydb-0.1.0-py3-none-any.whl` (wheel)
+- `fastpyvectordb-0.1.0.tar.gz` (source distribution)
+- `fastpyvectordb-0.1.0-py3-none-any.whl` (wheel)
 
 ### Step 5: Verify the Build
 
@@ -134,10 +134,10 @@ python -m venv test_env
 source test_env/bin/activate  # On Windows: test_env\Scripts\activate
 
 # Install from TestPyPI
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fastpydb
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fastpyvectordb
 
 # Test it works
-python -c "import fastpydb; print(fastpydb.__version__)"
+python -c "import fastpyvectordb; print(fastpyvectordb.__version__)"
 
 # Cleanup
 deactivate
@@ -160,13 +160,13 @@ When prompted:
 
 ```bash
 # Wait a minute for PyPI to process
-pip install fastpydb
+pip install fastpyvectordb
 
 # Verify
-python -c "import fastpydb; print(fastpydb.__version__)"
+python -c "import fastpyvectordb; print(fastpyvectordb.__version__)"
 ```
 
-Visit your package page: https://pypi.org/project/fastpydb/
+Visit your package page: https://pypi.org/project/fastpyvectordb/
 
 ---
 
@@ -237,7 +237,7 @@ chmod 600 ~/.pypirc
 
 ### Each Release
 ```bash
-# 1. Update version in pyproject.toml and fastpydb/__init__.py
+# 1. Update version in pyproject.toml and fastpyvectordb/__init__.py
 
 # 2. Clean and build
 rm -rf dist/ build/ *.egg-info/

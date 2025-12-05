@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-FastPyDB Quickstart Guide
+FastPyVectorDB Quickstart Guide
 
-This example demonstrates how to use FastPyDB for semantic search and
+This example demonstrates how to use FastPyVectorDB for semantic search and
 document retrieval, similar to ChromaDB.
 
 Installation:
-    pip install fastpydb[local]  # For local embeddings (no API key needed)
+    pip install fastpyvectordb[local]  # For local embeddings (no API key needed)
     # or
-    pip install fastpydb[openai]  # For OpenAI embeddings
+    pip install fastpyvectordb[openai]  # For OpenAI embeddings
 
 Quick Install from source:
     pip install -e .  # From the repository root
@@ -21,7 +21,7 @@ from pathlib import Path
 # Add parent directory to path (for running from examples/)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import fastpydb
+import fastpyvectordb
 
 
 def basic_usage():
@@ -31,7 +31,7 @@ def basic_usage():
     print("=" * 60)
 
     # Create a client (data stored in ./vectordb by default)
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
 
     # Create a collection
     # Uses sentence-transformers by default (no API key needed)
@@ -79,7 +79,7 @@ def filtering_example():
     print("FILTERING EXAMPLE")
     print("=" * 60)
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
     collection = client.get_collection("documents")
 
     # Search with filter
@@ -100,7 +100,7 @@ def crud_operations():
     print("CRUD OPERATIONS")
     print("=" * 60)
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
     collection = client.get_or_create_collection("crud_demo")
 
     # Create (Add)
@@ -153,7 +153,7 @@ def batch_operations():
 
     import time
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
     collection = client.get_or_create_collection("batch_demo")
 
     # Generate sample data
@@ -189,7 +189,7 @@ def multiple_collections():
     print("MULTIPLE COLLECTIONS")
     print("=" * 60)
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
 
     # Create collections for different types of content
     articles = client.get_or_create_collection("articles")
@@ -234,7 +234,7 @@ def using_openai_embeddings():
         print("  Skipped: Set OPENAI_API_KEY to run this example")
         return
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
 
     # Create collection with OpenAI embeddings
     collection = client.create_collection(
@@ -260,7 +260,7 @@ def peek_and_get_all():
     print("PEEK AND GET ALL")
     print("=" * 60)
 
-    client = fastpydb.Client(path="./quickstart_db")
+    client = fastpyvectordb.Client(path="./quickstart_db")
     collection = client.get_collection("documents")
 
     # Peek at first few documents
@@ -292,7 +292,7 @@ def cleanup():
 
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("  FastPyDB Quickstart Examples")
+    print("  FastPyVectorDB Quickstart Examples")
     print("=" * 60 + "\n")
 
     try:

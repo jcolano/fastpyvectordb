@@ -1,5 +1,5 @@
 """
-Tests for the FastPyDB Client API.
+Tests for the FastPyVectorDB Client API.
 """
 
 import sys
@@ -13,8 +13,8 @@ import numpy as np
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import fastpydb
-from fastpydb import Client, Collection
+import fastpyvectordb
+from fastpyvectordb import Client, Collection
 
 
 class TestClient:
