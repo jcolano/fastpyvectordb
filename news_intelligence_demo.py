@@ -571,8 +571,9 @@ class NewsIntelligenceDB:
             print("  Scalar quantizer initialized")
 
         if HAS_GRAPH:
-            self.graph = GraphDB()
-            print("  Knowledge graph initialized")
+            graph_path = os.path.join(self.config.db_path, "graph")
+            self.graph = GraphDB(graph_path)
+            print(f"  Knowledge graph initialized at {graph_path}")
 
     def ingest_articles(self, articles: List[Article], show_progress: bool = True):
         """Ingest articles into the database."""
